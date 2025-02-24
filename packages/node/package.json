@@ -37,6 +37,7 @@
     "protobufjs": "^6.11.4",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
+    "stream-json": "^1.9.1",
     "yargs": "^16.2.0"
   },
   "devDependencies": {
@@ -46,13 +47,15 @@
     "@types/jest": "^27.4.0",
     "@types/lodash": "^4.14.178",
     "@types/pino": "^6.3.12",
+    "@types/stream-json": "^1",
     "@types/tar": "^6.1.1",
     "@types/yargs": "^16.0.4",
     "dotenv": "^15.0.1",
     "nodemon": "^2.0.15"
   },
   "peerDependencies": {
-    "@subql/utils": "*"
+    "@subql/utils": "*",
+    "stream-json": "^1.9.1"
   },
   "files": [
     "/dist",

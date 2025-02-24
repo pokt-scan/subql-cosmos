@@ -1,30 +1,50 @@
 // // Copyright 2020-2025 SubQuery Pte Ltd authors & contributors
 // SPDX-License-Identifier: GPL-3.0
 
-import http from 'http';
-import https from 'https';
+import http from "http";
+import https from "https";
 import {
   isJsonRpcErrorResponse,
   JsonRpcRequest,
   JsonRpcSuccessResponse,
   parseJsonRpcResponse,
-} from '@cosmjs/json-rpc';
-import { HttpEndpoint } from '@cosmjs/tendermint-rpc';
-import axios, { AxiosInstance } from 'axios';
-import { RpcClient } from './RpcClient';
+} from "@cosmjs/json-rpc";
+import { HttpEndpoint } from "@cosmjs/tendermint-rpc";
+import axios, { AxiosInstance } from "axios";
+import { parser } from "stream-json";
+import Assembler from "stream-json/Assembler";
+
+import { RpcClient } from "./RpcClient";
 
 export function hasProtocol(url: string): boolean {
-  return url.search('://') !== -1;
+  return url.search("://") !== -1;
+}
+
+export async function streamHttpRequest(
+  connection: AxiosInstance,
+  request?: any,
+): Promise<any> {
+  const response = await connection.post("/", request, {
+    responseType: "stream", // Stream the response to handle large JSON
+  });
+
+  return new Promise((resolve, reject) => {
+    const jsonStream = response.data.pipe(parser());
+    jsonStream.on("error", reject);
+    const asm = Assembler.connectTo(jsonStream);
+    asm.on("done", asm => resolve(asm.current));
+  });
 }
 
 export async function httpRequest(
   connection: AxiosInstance,
   request?: any,
 ): Promise<any> {
-  const { data } = await connection.post('/', request);
+  const { data } = await connection.post("/", request);
 
   return data;
 }
+
 
 export class HttpClient implements RpcClient {
   protected readonly url: string;
@@ -32,7 +52,7 @@ export class HttpClient implements RpcClient {
   connection: AxiosInstance;
 
   constructor(endpoint: string | HttpEndpoint) {
-    if (typeof endpoint === 'string') {
+    if (typeof endpoint === "string") {
       // accept host.name:port and assume http protocol
       this.url = hasProtocol(endpoint) ? endpoint : `http://${endpoint}`;
       this.headers = {};
@@ -44,10 +64,10 @@ export class HttpClient implements RpcClient {
     const { searchParams } = new URL(this.url);
 
     // Support OnFinality api keys
-    const apiKey = searchParams.get('apikey');
+    const apiKey = searchParams.get("apikey");
     if (apiKey) {
       this.headers.apikey = apiKey;
-      this.url = this.url.slice(0, this.url.indexOf('?apikey'));
+      this.url = this.url.slice(0, this.url.indexOf("?apikey"));
     }
 
     const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 10 });
@@ -57,7 +77,14 @@ export class HttpClient implements RpcClient {
       httpAgent,
       httpsAgent,
       baseURL: this.url,
-      headers: this.headers,
+      headers: {
+        "Accept-Encoding": "gzip,deflate",
+        ...(this.headers || {}),
+      },
+      decompress: true, // Ensure Axios handles decompression
+      responseType: "stream", // Standardize stream handling
+      maxContentLength: Infinity, // Allow unlimited response size
+      maxBodyLength: Infinity,   // Allow unlimited response size
     });
   }
 
@@ -66,12 +93,20 @@ export class HttpClient implements RpcClient {
   }
 
   async execute(request: JsonRpcRequest): Promise<JsonRpcSuccessResponse> {
-    const response = parseJsonRpcResponse(
-      await httpRequest(this.connection, request),
-    );
-    if (isJsonRpcErrorResponse(response)) {
-      throw new Error(JSON.stringify(response.error));
+    try {
+      const rawResponse = await streamHttpRequest(this.connection, request);
+
+      const response = parseJsonRpcResponse(rawResponse);
+      if (isJsonRpcErrorResponse(response)) {
+        throw new Error(JSON.stringify(response.error));
+      }
+      return response;
+    } catch (err) {
+      if (err instanceof Error) {
+        throw new Error(`Failed to parse JSON RPC response: ${err.message}`);
+      } else {
+        throw new Error(`Failed to parse JSON RPC response: ${err}`);
+      }
     }
-    return response;
   }
 }
