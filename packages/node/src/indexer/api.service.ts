@@ -35,7 +35,7 @@ import { BlockContent, BlockResponse, BlockResultsResponse } from './types';
 
 const logger = getLogger('api');
 
-const MAX_RECONNECT_ATTEMPTS = 5;
+const MAX_RECONNECT_ATTEMPTS = 30;
 const KYVE_BUFFER_RANGE = 10;
 
 @Injectable()
