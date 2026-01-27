@@ -16,6 +16,11 @@ import Assembler from "stream-json/Assembler";
 
 import { RpcClient } from "./RpcClient";
 
+// Read HTTP timeout from environment variable, undefined if not set
+const httpTimeout = process.env.HTTP_CLIENT_TIMEOUT
+  ? parseInt(process.env.HTTP_CLIENT_TIMEOUT, 10)
+  : undefined;
+
 export function hasProtocol(url: string): boolean {
   return url.search("://") !== -1;
 }
@@ -24,15 +29,43 @@ export async function streamHttpRequest(
   connection: AxiosInstance,
   request?: any,
 ): Promise<any> {
+  let abortController: AbortController | undefined;
+
+  if (httpTimeout) {
+    abortController = new AbortController();
+
+    setTimeout(() => {
+      console.log(`[HttpClient] Canceling request due to timeout (${httpTimeout}ms)`);
+      abortController!.abort();
+    }, httpTimeout);
+  }
+
+  const startTime = Date.now();
+  const method = request?.method || 'unknown';
+
+  console.log(`[HttpClient] Starting request: ${method}`);
+
   const response = await connection.post("/", request, {
     responseType: "stream", // Stream the response to handle large JSON
+    signal: abortController?.signal,
   });
+
+  const fetchTime = Date.now() - startTime;
+  console.log(`[HttpClient] Response received for ${method} in ${fetchTime}ms, parsing stream...`);
 
   return new Promise((resolve, reject) => {
     const jsonStream = response.data.pipe(parser());
-    jsonStream.on("error", reject);
+    jsonStream.on("error", (err: Error) => {
+      const totalTime = Date.now() - startTime;
+      console.log(`[HttpClient] Stream parse error for ${method} after ${totalTime}ms: ${err.message}`);
+      reject(err);
+    });
     const asm = Assembler.connectTo(jsonStream);
-    asm.on("done", asm => resolve(asm.current));
+    asm.on("done", (asm: any) => {
+      const totalTime = Date.now() - startTime;
+      console.log(`[HttpClient] Request ${method} completed in ${totalTime}ms (fetch: ${fetchTime}ms, parse: ${totalTime - fetchTime}ms)`);
+      resolve(asm.current);
+    });
   });
 }
 
@@ -85,7 +118,10 @@ export class HttpClient implements RpcClient {
       responseType: "stream", // Standardize stream handling
       maxContentLength: Infinity, // Allow unlimited response size
       maxBodyLength: Infinity,   // Allow unlimited response size
+      timeout: httpTimeout, // HTTP request timeout in milliseconds
     });
+
+    console.log(`[HttpClient] Initialized with timeout: ${httpTimeout || 'none'}ms, endpoint: ${this.url}`);
   }
 
   disconnect(): void {
