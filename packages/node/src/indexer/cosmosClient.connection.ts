@@ -155,6 +155,8 @@ export class CosmosClientConnection
       formatted_error = CosmosClientConnection.handleRateLimitError(e);
     } else if (e.message.includes(`Exceeded max limit of`)) {
       formatted_error = CosmosClientConnection.handleLargeResponseError(e);
+    } else if(e.message.includes(`Failed to parse JSON RPC response`)) {
+      formatted_error = CosmosClientConnection.handleRpcJsonError(e);
     } else {
       formatted_error = new ApiConnectionError(
         e.name,
@@ -197,5 +199,13 @@ export class CosmosClientConnection
       newMessage,
       ApiErrorType.Default,
     );
+  }
+
+  static handleRpcJsonError(e: Error): ApiConnectionError {
+    return new ApiConnectionError(
+      'RpcJsonError',
+      e.message,
+      ApiErrorType.Default,
+    )
   }
 }
