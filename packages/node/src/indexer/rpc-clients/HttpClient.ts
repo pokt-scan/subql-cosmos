@@ -30,13 +30,14 @@ export async function streamHttpRequest(
   request?: any,
 ): Promise<any> {
   let abortController: AbortController | undefined;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   const method = request?.method || 'unknown';
 
   if (httpTimeout) {
     abortController = new AbortController();
 
-    setTimeout(() => {
+    timeoutId = setTimeout(() => {
       console.log(
         `[HttpClient] Canceling request ${method} due to timeout (${httpTimeout}ms)`,
       );
@@ -61,6 +62,7 @@ export async function streamHttpRequest(
   return new Promise((resolve, reject) => {
     const jsonStream = response.data.pipe(parser());
     jsonStream.on('error', (err: Error) => {
+      if (timeoutId) clearTimeout(timeoutId);
       const totalTime = Date.now() - startTime;
       console.log(
         `[HttpClient] Stream parse error for ${method} after ${totalTime}ms: ${err.message}`,
@@ -69,6 +71,7 @@ export async function streamHttpRequest(
     });
     const asm = Assembler.connectTo(jsonStream);
     asm.on('done', (asm: any) => {
+      if (timeoutId) clearTimeout(timeoutId);
       const totalTime = Date.now() - startTime;
       console.log(
         `[HttpClient] Request ${method} completed in ${totalTime}ms (fetch: ${fetchTime}ms, parse: ${
