@@ -4392,6 +4392,7 @@ __metadata:
     protobufjs: ^6.11.4
     reflect-metadata: ^0.1.13
     rimraf: ^3.0.2
+    simdjson: ^0.9.2
     stream-json: ^1.9.1
     yargs: ^16.2.0
   peerDependencies:
@@ -11462,6 +11463,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"node-addon-api@npm:^2.0.0":
+  version: 2.0.2
+  resolution: "node-addon-api@npm:2.0.2"
+  dependencies:
+    node-gyp: latest
+  checksum: 31fb22d674648204f8dd94167eb5aac896c841b84a9210d614bf5d97c74ef059cc6326389cf0c54d2086e35312938401d4cc82e5fcd679202503eb8ac84814f8
+  languageName: node
+  linkType: hard
+
 "node-fetch@npm:2.6.7":
   version: 2.6.7
   resolution: "node-fetch@npm:2.6.7"
@@ -13364,6 +13374,16 @@ __metadata:
     figures: ^2.0.0
     pkg-conf: ^2.1.0
   checksum: a6a540e054096a1f4cf8b1f21fea62ca3e44a19faa63bd486723b736348609caab1fa59a87f16559de347dde8ae1fdebfc25a8b6723c88ae8239f176ffb0dda5
+  languageName: node
+  linkType: hard
+
+"simdjson@npm:^0.9.2":
+  version: 0.9.2
+  resolution: "simdjson@npm:0.9.2"
+  dependencies:
+    node-addon-api: ^2.0.0
+    node-gyp: latest
+  checksum: cd3032e2216cf91f9f15e42ea2e6c3d832cad49bd718133dcc0643d3e4eafb1e13c66fa1b25004c54e1ecce1d547545c82810162ef288c257fac07d17b2aa3e4
   languageName: node
   linkType: hard
 
